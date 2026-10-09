@@ -3,38 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1a0f24">
-<title>Au Anniversary Buzzer</title>
+<meta name="theme-color" content="#0a1440">
+<title>Buzz In</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Hind:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-/* Game-show stage: landing -> host screen (TV) or player screen (phone). Single dark look. */
+/* Game-show stage for any Jeopardy-style game: landing -> host screen (TV) or player screen (phone). Single dark "studio blue + gold" look. */
 :root{
-  --night:#1a0f24; --panel:#26172f; --panel2:#311e3c; --line:#45305a;
-  --ink:#f6eee4; --muted:#bba9c3;
-  --marigold:#f5a524; --rani:#e2366f; --mint:#3ecf8e; --red:#ff5d6c;
-  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
-  --body:"Hind","Segoe UI",system-ui,sans-serif;
+  --night:#0a1440; --panel:#111f5e; --panel2:#18297a; --line:#2c3f96;
+  --ink:#f3f5ff; --muted:#aab4e0;
+  --marigold:#ffc531; /* gold: board values, winners */
+  --rani:#e8364f;     /* buzzer red */
+  --mint:#33d39a; --red:#ff5d6c;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;
-  background-image:radial-gradient(ellipse at 50% -10%,#3a1f45 0%,transparent 60%);background-attachment:fixed;
+  background-image:radial-gradient(ellipse at 50% -10%,#1e3394 0%,transparent 60%);background-attachment:fixed;
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 [hidden]{display:none!important}
 .wrap{min-height:100%;max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:16px;display:flex;flex-direction:column;gap:16px}
 h1,h2,h3{font-family:var(--display);margin:0;line-height:1.05;text-wrap:balance}
-h1{font-weight:800;font-size:clamp(1.8rem,5vw,2.8rem)}
+h1{font-weight:900;letter-spacing:-.01em;font-size:clamp(1.8rem,5vw,2.8rem)}
 h1 span,.acc{color:var(--marigold)}
 h2{font-weight:600;font-size:1.25rem}
 .muted{color:var(--muted)}
 .btn{font:inherit;font-weight:600;font-size:1rem;padding:12px 18px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;touch-action:manipulation}
 .btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--marigold);color:#2a1700;border-color:var(--marigold)}
+.btn.primary{background:var(--marigold);color:#1b1400;border-color:var(--marigold)}
 .btn.good{background:var(--mint);color:#06281a;border-color:var(--mint)}
 .btn.bad{background:var(--red);color:#2b0007;border-color:var(--red)}
 .btn.small{padding:6px 10px;font-size:.9rem;border-radius:9px}
@@ -43,7 +45,7 @@ h2{font-weight:600;font-size:1.25rem}
 input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:100%;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .label{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.banner{background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.4);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:.95rem}
+.banner{background:rgba(255,197,49,.12);border:1px solid rgba(255,197,49,.4);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:.95rem}
 
 /* landing */
 .landing{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin-top:4vh}
@@ -66,7 +68,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
 .pill.locked{background:rgba(255,93,108,.16);color:var(--red)}
 .values{display:flex;gap:6px;flex-wrap:wrap}
 .values .btn{flex:1;min-width:64px;font-variant-numeric:tabular-nums}
-.values .btn[aria-pressed=true]{background:var(--marigold);color:#2a1700;border-color:var(--marigold)}
+.values .btn[aria-pressed=true]{background:var(--marigold);color:#1b1400;border-color:var(--marigold)}
 .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .actions .btn{padding:14px 12px;font-size:1.05rem}
 .queue{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
@@ -93,16 +95,21 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
 .score-big{font-family:var(--display);font-weight:800;font-size:1.6rem;font-variant-numeric:tabular-nums}
 .buzz{--s:min(78vw,52vh,360px);width:var(--s);height:var(--s);border-radius:50%;border:0;cursor:pointer;margin-top:2vh;
   font-family:var(--display);font-weight:800;font-size:calc(var(--s)*.18);color:#fff;letter-spacing:.03em;
-  background:radial-gradient(circle at 35% 30%,#ff7aa3 0%,var(--rani) 45%,#9c1846 100%);
-  box-shadow:0 14px 0 #6d0f30,0 22px 40px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25);
+  background:radial-gradient(circle at 35% 30%,#ff8a96 0%,var(--rani) 45%,#9a1427 100%);
+  box-shadow:0 14px 0 #6a0d1b,0 22px 40px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25);
   transition:transform .06s,box-shadow .06s,filter .2s;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
-.buzz.pressed{transform:translateY(10px);box-shadow:0 4px 0 #6d0f30,0 8px 20px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25)}
+.buzz.pressed{transform:translateY(10px);box-shadow:0 4px 0 #6a0d1b,0 8px 20px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25)}
 .buzz:disabled{cursor:default;filter:grayscale(.8) brightness(.6)}
-.buzz.first{background:radial-gradient(circle at 35% 30%,#ffd68a 0%,var(--marigold) 45%,#a8640a 100%);color:#2a1700;filter:none;
-  box-shadow:0 4px 0 #6b3f04,0 0 70px rgba(245,165,36,.6);transform:translateY(10px)}
+.buzz.first{background:radial-gradient(circle at 35% 30%,#ffe590 0%,var(--marigold) 45%,#a87a00 100%);color:#1b1400;filter:none;
+  box-shadow:0 4px 0 #6b4d00,0 0 70px rgba(255,197,49,.55);transform:translateY(10px)}
 .status{font-family:var(--display);font-weight:600;font-size:clamp(1.3rem,5vw,1.8rem);min-height:2.3em;line-height:1.15;text-wrap:balance}
 .status.open{color:var(--mint)} .status.win{color:var(--marigold)} .status.bad{color:var(--red)}
 .conn{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.gametitle{font-family:var(--display);font-weight:800;font-size:1.05rem;color:var(--marigold);text-transform:uppercase;letter-spacing:.06em;overflow-wrap:anywhere}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}
+.settings label{display:flex;flex-direction:column;gap:6px;font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.settings input[type=text],.settings select{font:inherit;font-size:1rem;text-transform:none;letter-spacing:0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--night);color:var(--ink);width:100%;min-width:0}
+.settings select:focus-visible{outline:3px solid var(--marigold);outline-offset:2px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-weight:600;z-index:5}
 .timer{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:6px}
 .timer .secs{font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,9vw,4.2rem);line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}
@@ -119,8 +126,8 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
 
   <!-- LANDING -->
   <section id="landing" hidden>
-    <h1>Au Anniversary <span>Buzzer</span></h1>
-    <p class="muted" style="margin:.4rem 0 0">Jeopardy night for the whole parivaar. No accounts, no apps.</p>
+    <h1>Buzz <span>In</span></h1>
+    <p class="muted" style="margin:.4rem 0 0">Phone buzzers for any Jeopardy-style game: family night, classroom review, office trivia. No accounts, no apps.</p>
     <div class="landing">
       <div class="card">
         <h2>Join a game</h2>
@@ -132,7 +139,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
       </div>
       <div class="card">
         <h2>Host the game</h2>
-        <p class="muted">Open this on the laptop or TV that shows the Jeopardy board. You'll get a code and QR code for everyone's phones.</p>
+        <p class="muted">Open this on the laptop or TV that shows your game board. You'll get a code and QR code for everyone's phones.</p>
         <button class="btn primary" id="hostBtn" type="button">Start hosting</button>
       </div>
     </div>
@@ -141,8 +148,8 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
   <!-- HOST -->
   <section id="hostView" hidden>
     <div class="row spread" style="margin-bottom:14px">
-      <h1>Au Anniversary <span>Buzzer</span></h1>
-      <span class="conn"><span class="dot off" id="hDot"></span><span id="hConn">Starting…</span> · v6</span>
+      <div><div class="gametitle" id="hTitle"></div><h1>Buzz <span>In</span></h1></div>
+      <span class="conn"><span class="dot off" id="hDot"></span><span id="hConn">Starting…</span> · v7</span>
     </div>
     <div class="banner" id="fileWarn" hidden>You opened this file straight from your computer, so phones can't reach the join link. Put it online first (see the instructions that came with it). You can still test it here in two browser tabs.</div>
     <div class="host" style="margin-top:14px">
@@ -195,18 +202,50 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
             <button class="btn small" id="confirmNo" type="button">Cancel</button>
           </div>
         </div>
+        <div class="card">
+          <h2>Game settings</h2>
+          <div class="settings">
+            <label for="setTitle">Game name
+              <input type="text" id="setTitle" maxlength="40" placeholder="e.g. Friday Trivia">
+            </label>
+            <label for="setValues">Clue values
+              <select id="setValues">
+                <option value="100,200,300,400,500">100 – 500</option>
+                <option value="200,400,600,800,1000">200 – 1000 (TV round 1)</option>
+                <option value="400,800,1200,1600,2000">400 – 2000 (Double round)</option>
+                <option value="1,2,3,4,5">1 – 5 points</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </label>
+            <label for="setClock">Answer clock
+              <select id="setClock">
+                <option value="10">10 seconds</option>
+                <option value="15">15 seconds</option>
+                <option value="20" selected>20 seconds</option>
+                <option value="30">30 seconds</option>
+                <option value="60">60 seconds</option>
+                <option value="0">Off</option>
+              </select>
+            </label>
+          </div>
+          <label for="setCustom" class="settings" id="customWrap" hidden style="display:block">
+            <span class="label">Your values, separated by commas</span>
+            <input type="text" id="setCustom" placeholder="e.g. 10, 20, 30, 50" style="margin-top:6px">
+          </label>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- PLAYER: name -->
   <section id="nameView" hidden>
-    <h1>Au Anniversary <span>Buzzer</span></h1>
+    <div class="gametitle" id="nTitle"></div>
+    <h1>Buzz <span>In</span></h1>
     <div class="card" style="max-width:460px;margin:5vh auto 0;width:100%">
       <span class="label">Joining game <span class="acc" id="nameCode"></span></span>
       <h2>What's your team name?</h2>
       <form id="nameForm" style="display:flex;flex-direction:column;gap:10px" autocomplete="off">
-        <input type="text" id="nameInput" maxlength="20" placeholder="e.g. Team Nani">
+        <input type="text" id="nameInput" maxlength="20" placeholder="e.g. The Brainiacs">
         <button class="btn primary" type="submit" style="font-size:1.15rem">Let's play</button>
       </form>
       <p class="muted" style="margin:0;font-size:.9rem">Type the exact same team name as your teammates to share one buzzer and one score. Capitals don't matter.</p>
@@ -217,8 +256,9 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
   <!-- PLAYER: buzzer -->
   <section id="playerView" class="player" hidden>
     <div class="ptop">
-      <div style="text-align:left">
-        <div style="font-weight:600;font-size:1.1rem" id="pName"></div>
+      <div style="text-align:left;min-width:0">
+        <div class="gametitle" id="pTitle"></div>
+        <div style="font-weight:700;font-size:1.1rem;overflow-wrap:anywhere" id="pName"></div>
         <button class="btn small" id="renameBtn" type="button" style="margin-top:4px">Switch team</button>
       </div>
       <div style="text-align:right">
@@ -231,7 +271,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
     <div class="timer" id="pTimer" hidden><div class="secs" id="pSecs">20</div><div class="bar"><div class="fill" id="pFill"></div></div></div>
     <label class="toggle"><input type="checkbox" id="pSound" checked> Buzzer sound on this phone</label>
     <div class="conn"><span class="dot off" id="pDot"></span><span id="pConn">Connecting to the host…</span></div>
-    <div class="muted" style="font-size:.75rem">Buzzer version 6</div>
+    <div class="muted" style="font-size:.75rem">Buzz In version 7</div>
   </section>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -251,22 +291,22 @@ var BROKERS = [
   { url:"wss://broker.hivemq.com:8884/mqtt" },
   { url:"wss://test.mosquitto.org:8081/mqtt" }
 ];
-var TOPIC = "au-anniv-jeopardy-buzz/v2/";
+var TOPIC = "buzz-in-jeopardy/v1/";
 var ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 function newCode(){ var s=""; for(var i=0;i<5;i++) s+=ALPHA[Math.floor(Math.random()*ALPHA.length)]; return s; }
 function cleanCode(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5); }
 function cleanName(s){ return String(s||"").replace(/\s+/g," ").trim().slice(0,20); }
 function teamKey(name){ return cleanName(name).toLowerCase(); }
-var ANSWER_MS = 20000;
+var ANSWER_MS = 20000; // host's answer clock; 0 = off
 /* Draws the 20-second answer clock. `left` is ms remaining, or null to hide it. */
-function drawTimer(prefix, left){
+function drawTimer(prefix, left, total){
   var box=$(prefix+"Timer");
   if(left===null || left===undefined){ box.hidden=true; return; }
   box.hidden=false;
   var secs=Math.ceil(Math.max(0,left)/1000);
   box.className="timer"+(left<=0?" done":secs<=5?" low":secs<=10?" warn":"");
   $(prefix+"Secs").textContent = left<=0 ? "Time's up!" : secs;
-  $(prefix+"Fill").style.width = Math.max(0,Math.min(100,left/ANSWER_MS*100))+"%";
+  $(prefix+"Fill").style.width = Math.max(0,Math.min(100,left/(total||ANSWER_MS||1)*100))+"%";
 }
 function show(id){ ["landing","hostView","nameView","playerView"].forEach(function(v){ $(v).hidden = v!==id; }); }
 var toastT;
@@ -335,6 +375,7 @@ function startHost(){
   H = saved && saved.code && saved.teams ? saved : { code:newCode(), teams:{}, value:200 };
   H.players = {}; // phone id -> {team, seen}
   H.round = String(Date.now()); H.locked=false; H.order=[]; H.wrong={}; H.b = 0; H.conn=null;
+  initSettings(); if(valueList().indexOf(H.value)<0) H.value=valueList()[0];
   buildValues(); hostConnect(0); renderHost();
 }
 function saveHost(){
@@ -404,14 +445,14 @@ function onHostData(d){
     broadcast(); renderHost();
   }
 }
-/* 20-second answer clock: starts the moment a team becomes the one answering. */
-function startClock(){ H.timerEnd = Date.now() + ANSWER_MS; H.timeUpRound = null; }
+/* Answer clock: starts the moment a team becomes the one answering. */
+function startClock(){ H.timerEnd = ANSWER_MS ? Date.now() + ANSWER_MS : null; H.timeUpRound = null; }
 function stopClock(){ H.timerEnd = null; }
 function clockLeft(){ return H.timerEnd ? Math.max(0, H.timerEnd - Date.now()) : null; }
 setInterval(function(){
   if(!H || $("hostView").hidden) return;
   var left = clockLeft();
-  drawTimer("h", left);
+  drawTimer("h", left, ANSWER_MS);
   if(left===0 && H.timeUpRound !== H.round + "|" + currentIdx()){
     H.timeUpRound = H.round + "|" + currentIdx();
     tone([440,330,220],.18);
@@ -428,16 +469,40 @@ function broadcast(){
     current: ci>=0?H.order[ci].id:null,
     currentName: ci>=0?H.teams[H.order[ci].id].name:null,
     currentBy: ci>=0?H.order[ci].by:null,
-    timeLeft: ci>=0 ? clockLeft() : null,
+    timeLeft: ci>=0 ? clockLeft() : null, clockTotal: ANSWER_MS, title: S.title,
     order:H.order.map(function(o){ return o.id; }), wrong:Object.keys(H.wrong), scores:scores
   }, false);
 }
 setInterval(function(){ if(H && !$("hostView").hidden){ broadcast(); renderHost(); } }, 5000);
 
+/* ---------- game settings (saved on the host device) ---------- */
+var S = { title:"", values:"200,400,600,800,1000", custom:"", clock:20 };
+try{ var savedS = JSON.parse(LS.get("buzzSettings")||"null"); if(savedS) for(var k in S) if(k in savedS) S[k]=savedS[k]; }catch(e){}
+function valueList(){
+  var src = S.values==="custom" ? S.custom : S.values;
+  var list = String(src||"").split(/[\s,;]+/).map(Number).filter(function(n){ return isFinite(n) && n>0; }).slice(0,9);
+  return list.length ? list : [100,200,300,400,500];
+}
+function applySettings(){
+  LS.set("buzzSettings", JSON.stringify(S));
+  ANSWER_MS = (Number(S.clock)||0) * 1000;
+  $("customWrap").hidden = S.values!=="custom";
+  $("hTitle").textContent = S.title;
+  if(H){ var vl=valueList(); if(vl.indexOf(H.value)<0) H.value=vl[0]; buildValues(); broadcast(); renderHost(); }
+}
+function initSettings(){
+  $("setTitle").value=S.title; $("setValues").value=S.values; $("setCustom").value=S.custom; $("setClock").value=String(S.clock);
+  $("setTitle").addEventListener("input", function(){ S.title=$("setTitle").value.trim().slice(0,40); applySettings(); });
+  $("setValues").addEventListener("change", function(){ S.values=$("setValues").value; applySettings(); if(S.values==="custom") $("setCustom").focus(); });
+  $("setCustom").addEventListener("input", function(){ S.custom=$("setCustom").value; applySettings(); });
+  $("setClock").addEventListener("change", function(){ S.clock=Number($("setClock").value); applySettings(); });
+  applySettings();
+}
 function buildValues(){
   var box=$("values"); box.textContent="";
-  [100,200,300,400,500].forEach(function(v){
+  valueList().forEach(function(v,i){
     var b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent=v;
+    b.title="Key "+(i+1);
     b.setAttribute("aria-pressed", String(v===H.value));
     b.addEventListener("click", function(){ H.value=v; saveHost(); buildValues(); renderHost(); });
     box.appendChild(b);
@@ -475,13 +540,13 @@ $("confirmYes").addEventListener("click", function(){
 });
 document.addEventListener("keydown", function(e){
   if(!H || $("hostView").hidden || e.repeat) return;
-  if(e.target && e.target.tagName==="INPUT" && e.target.type==="text") return;
+  if(e.target && ((e.target.tagName==="INPUT" && e.target.type==="text") || e.target.tagName==="SELECT")) return;
   var k=e.key.toLowerCase();
   if(k==="n") nextClue();
   else if(k==="l") toggleLock();
   else if(k==="c" && !$("rightBtn").disabled) mark(true);
   else if(k==="w" && !$("wrongBtn").disabled) mark(false);
-  else if(["1","2","3","4","5"].indexOf(k)>=0){ H.value=Number(k)*100; saveHost(); buildValues(); renderHost(); }
+  else if(/^[1-9]$/.test(k) && valueList()[Number(k)-1]){ H.value=valueList()[Number(k)-1]; saveHost(); buildValues(); renderHost(); }
 });
 
 function renderHost(){
@@ -587,6 +652,9 @@ function playerConnect(idx){
       if(topic !== T + "/state" || !d || d.t!=="state" || typeof d.round!=="string") return;
       var was = P.st && P.st.current;
       P.deadline = (typeof d.timeLeft==="number") ? Date.now() + d.timeLeft : null;
+      P.total = Number(d.clockTotal)||20000;
+      var tt = typeof d.title==="string" ? d.title.slice(0,40) : "";
+      $("pTitle").textContent = tt; $("nTitle").textContent = tt;
       P.st = d; P.lastState = Date.now(); P.tries = 0;
       if(d.current===teamKey(P.name) && was!==teamKey(P.name)){ try{ navigator.vibrate && navigator.vibrate([80,40,80]); }catch(e){} }
       renderPlayer();
@@ -627,7 +695,7 @@ document.addEventListener("keydown", function(e){
 setInterval(function(){
   if($("playerView").hidden) return;
   var s=P.st, show = s && s.current && P.deadline && !hostGone();
-  drawTimer("p", show ? P.deadline - Date.now() : null);
+  drawTimer("p", show ? P.deadline - Date.now() : null, P.total);
 }, 200);
 function hostGone(){ return P.lastState && Date.now()-P.lastState > 16000; }
 function renderPlayer(){
