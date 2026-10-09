@@ -3,40 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0a1440">
+<meta name="theme-color" content="#1a0f24">
 <title>Buzz In</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Hind:wght@400;500;600&display=swap">
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-/* Game-show stage for any Jeopardy-style game: landing -> host screen (TV) or player screen (phone). Single dark "studio blue + gold" look. */
+/* Game-show stage for any Jeopardy-style game: landing -> host screen (TV) or player screen (phone). Single dark plum-and-marigold look. */
 :root{
-  --night:#0a1440; --panel:#111f5e; --panel2:#18297a; --line:#2c3f96;
-  --ink:#f3f5ff; --muted:#aab4e0;
-  --marigold:#ffc531; /* gold: board values, winners */
-  --rani:#e8364f;     /* buzzer red */
-  --mint:#33d39a; --red:#ff5d6c;
-  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
-  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --night:#1a0f24; --panel:#26172f; --panel2:#311e3c; --line:#45305a;
+  --ink:#f6eee4; --muted:#bba9c3;
+  --marigold:#f5a524; --rani:#e2366f; --mint:#3ecf8e; --red:#ff5d6c;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Hind","Segoe UI",system-ui,sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--night);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.4;
-  background-image:radial-gradient(ellipse at 50% -10%,#1e3394 0%,transparent 60%);background-attachment:fixed;
+  background-image:radial-gradient(ellipse at 50% -10%,#3a1f45 0%,transparent 60%);background-attachment:fixed;
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 [hidden]{display:none!important}
 .wrap{min-height:100%;max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:16px;display:flex;flex-direction:column;gap:16px}
 h1,h2,h3{font-family:var(--display);margin:0;line-height:1.05;text-wrap:balance}
-h1{font-weight:900;letter-spacing:-.01em;font-size:clamp(1.8rem,5vw,2.8rem)}
+h1{font-weight:800;font-size:clamp(1.8rem,5vw,2.8rem)}
 h1 span,.acc{color:var(--marigold)}
 h2{font-weight:600;font-size:1.25rem}
 .muted{color:var(--muted)}
 .btn{font:inherit;font-weight:600;font-size:1rem;padding:12px 18px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;touch-action:manipulation}
 .btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--marigold);color:#1b1400;border-color:var(--marigold)}
+.btn.primary{background:var(--marigold);color:#2a1700;border-color:var(--marigold)}
 .btn.good{background:var(--mint);color:#06281a;border-color:var(--mint)}
 .btn.bad{background:var(--red);color:#2b0007;border-color:var(--red)}
 .btn.small{padding:6px 10px;font-size:.9rem;border-radius:9px}
@@ -45,7 +43,7 @@ h2{font-weight:600;font-size:1.25rem}
 input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:100%;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .label{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.banner{background:rgba(255,197,49,.12);border:1px solid rgba(255,197,49,.4);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:.95rem}
+.banner{background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.4);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:.95rem}
 
 /* landing */
 .landing{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin-top:4vh}
@@ -68,7 +66,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
 .pill.locked{background:rgba(255,93,108,.16);color:var(--red)}
 .values{display:flex;gap:6px;flex-wrap:wrap}
 .values .btn{flex:1;min-width:64px;font-variant-numeric:tabular-nums}
-.values .btn[aria-pressed=true]{background:var(--marigold);color:#1b1400;border-color:var(--marigold)}
+.values .btn[aria-pressed=true]{background:var(--marigold);color:#2a1700;border-color:var(--marigold)}
 .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .actions .btn{padding:14px 12px;font-size:1.05rem}
 .queue{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
@@ -95,13 +93,13 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
 .score-big{font-family:var(--display);font-weight:800;font-size:1.6rem;font-variant-numeric:tabular-nums}
 .buzz{--s:min(78vw,52vh,360px);width:var(--s);height:var(--s);border-radius:50%;border:0;cursor:pointer;margin-top:2vh;
   font-family:var(--display);font-weight:800;font-size:calc(var(--s)*.18);color:#fff;letter-spacing:.03em;
-  background:radial-gradient(circle at 35% 30%,#ff8a96 0%,var(--rani) 45%,#9a1427 100%);
-  box-shadow:0 14px 0 #6a0d1b,0 22px 40px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25);
+  background:radial-gradient(circle at 35% 30%,#ff7aa3 0%,var(--rani) 45%,#9c1846 100%);
+  box-shadow:0 14px 0 #6d0f30,0 22px 40px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25);
   transition:transform .06s,box-shadow .06s,filter .2s;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
-.buzz.pressed{transform:translateY(10px);box-shadow:0 4px 0 #6a0d1b,0 8px 20px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25)}
+.buzz.pressed{transform:translateY(10px);box-shadow:0 4px 0 #6d0f30,0 8px 20px rgba(0,0,0,.5),inset 0 -8px 20px rgba(0,0,0,.25)}
 .buzz:disabled{cursor:default;filter:grayscale(.8) brightness(.6)}
-.buzz.first{background:radial-gradient(circle at 35% 30%,#ffe590 0%,var(--marigold) 45%,#a87a00 100%);color:#1b1400;filter:none;
-  box-shadow:0 4px 0 #6b4d00,0 0 70px rgba(255,197,49,.55);transform:translateY(10px)}
+.buzz.first{background:radial-gradient(circle at 35% 30%,#ffd68a 0%,var(--marigold) 45%,#a8640a 100%);color:#2a1700;filter:none;
+  box-shadow:0 4px 0 #6b3f04,0 0 70px rgba(245,165,36,.6);transform:translateY(10px)}
 .status{font-family:var(--display);font-weight:600;font-size:clamp(1.3rem,5vw,1.8rem);min-height:2.3em;line-height:1.15;text-wrap:balance}
 .status.open{color:var(--mint)} .status.win{color:var(--marigold)} .status.bad{color:var(--red)}
 .conn{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
@@ -149,7 +147,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
   <section id="hostView" hidden>
     <div class="row spread" style="margin-bottom:14px">
       <div><div class="gametitle" id="hTitle"></div><h1>Buzz <span>In</span></h1></div>
-      <span class="conn"><span class="dot off" id="hDot"></span><span id="hConn">Starting…</span> · v7</span>
+      <span class="conn"><span class="dot off" id="hDot"></span><span id="hConn">Starting…</span> · v8</span>
     </div>
     <div class="banner" id="fileWarn" hidden>You opened this file straight from your computer, so phones can't reach the join link. Put it online first (see the instructions that came with it). You can still test it here in two browser tabs.</div>
     <div class="host" style="margin-top:14px">
@@ -271,7 +269,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
     <div class="timer" id="pTimer" hidden><div class="secs" id="pSecs">20</div><div class="bar"><div class="fill" id="pFill"></div></div></div>
     <label class="toggle"><input type="checkbox" id="pSound" checked> Buzzer sound on this phone</label>
     <div class="conn"><span class="dot off" id="pDot"></span><span id="pConn">Connecting to the host…</span></div>
-    <div class="muted" style="font-size:.75rem">Buzz In version 7</div>
+    <div class="muted" style="font-size:.75rem">Buzz In version 8</div>
   </section>
 </div>
 <div class="toast" id="toast" hidden></div>
