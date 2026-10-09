@@ -104,7 +104,14 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
 .status.open{color:var(--mint)} .status.win{color:var(--marigold)} .status.bad{color:var(--red)}
 .conn{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-weight:600;z-index:5}
-@media (prefers-reduced-motion:reduce){.buzz{transition:none}}
+.timer{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.timer .secs{font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,9vw,4.2rem);line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}
+.timer .bar{width:100%;height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.timer .fill{height:100%;width:100%;background:var(--mint);border-radius:999px;transition:width .2s linear}
+.timer.warn .secs{color:var(--marigold)} .timer.warn .fill{background:var(--marigold)}
+.timer.low .secs{color:var(--red)} .timer.low .fill{background:var(--red)}
+.timer.done .secs{color:var(--red);font-size:clamp(1.8rem,6vw,2.6rem)}
+@media (prefers-reduced-motion:reduce){.buzz{transition:none}.timer .fill{transition:none}}
 </style>
 </head>
 <body>
@@ -163,6 +170,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
           <span class="pill open" id="statePill">Buzzers open</span>
           <div class="who" id="stageWho">Waiting for a buzz…</div>
           <div class="sub" id="stageSub">Read the clue, then let them buzz.</div>
+          <div class="timer" id="hTimer" hidden><div class="secs" id="hSecs">20</div><div class="bar"><div class="fill" id="hFill"></div></div></div>
         </div>
         <div class="card">
           <div class="label">This clue is worth</div>
@@ -220,6 +228,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
     </div>
     <button class="buzz" id="buzzBtn" type="button" disabled>BUZZ</button>
     <div class="status" id="pStatus" aria-live="polite">Connecting…</div>
+    <div class="timer" id="pTimer" hidden><div class="secs" id="pSecs">20</div><div class="bar"><div class="fill" id="pFill"></div></div></div>
     <label class="toggle"><input type="checkbox" id="pSound" checked> Buzzer sound on this phone</label>
     <div class="conn"><span class="dot off" id="pDot"></span><span id="pConn">Connecting to the host…</span></div>
   </section>
@@ -247,6 +256,17 @@ function newCode(){ var s=""; for(var i=0;i<5;i++) s+=ALPHA[Math.floor(Math.rand
 function cleanCode(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5); }
 function cleanName(s){ return String(s||"").replace(/\s+/g," ").trim().slice(0,20); }
 function teamKey(name){ return cleanName(name).toLowerCase(); }
+var ANSWER_MS = 20000;
+/* Draws the 20-second answer clock. `left` is ms remaining, or null to hide it. */
+function drawTimer(prefix, left){
+  var box=$(prefix+"Timer");
+  if(left===null || left===undefined){ box.hidden=true; return; }
+  box.hidden=false;
+  var secs=Math.ceil(Math.max(0,left)/1000);
+  box.className="timer"+(left<=0?" done":secs<=5?" low":secs<=10?" warn":"");
+  $(prefix+"Secs").textContent = left<=0 ? "Time's up!" : secs;
+  $(prefix+"Fill").style.width = Math.max(0,Math.min(100,left/ANSWER_MS*100))+"%";
+}
 function show(id){ ["landing","hostView","nameView","playerView"].forEach(function(v){ $(v).hidden = v!==id; }); }
 var toastT;
 function toast(msg){ var t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(function(){ t.hidden=true; },2200); }
@@ -377,11 +397,26 @@ function onHostData(d){
     // Shared team buzzer: only the team's first press counts.
     if(d.round!==H.round || H.locked || H.wrong[team]) return;
     if(H.order.some(function(o){ return o.id===team; })) return;
-    H.order.push({id:team, at:performance.now()});
+    H.order.push({id:team, at:performance.now(), by:id});
+    if(currentIdx()===H.order.length-1) startClock();
     if(currentIdx()===H.order.length-1 && $("soundToggle").checked) playBuzz();
     broadcast(); renderHost();
   }
 }
+/* 20-second answer clock: starts the moment a team becomes the one answering. */
+function startClock(){ H.timerEnd = Date.now() + ANSWER_MS; H.timeUpRound = null; }
+function stopClock(){ H.timerEnd = null; }
+function clockLeft(){ return H.timerEnd ? Math.max(0, H.timerEnd - Date.now()) : null; }
+setInterval(function(){
+  if(!H || $("hostView").hidden) return;
+  var left = clockLeft();
+  drawTimer("h", left);
+  if(left===0 && H.timeUpRound !== H.round + "|" + currentIdx()){
+    H.timeUpRound = H.round + "|" + currentIdx();
+    tone([440,330,220],.18);
+    $("stageSub").textContent = "Time's up! Mark it right or wrong.";
+  }
+}, 200);
 function currentIdx(){ for(var i=0;i<H.order.length;i++){ if(!H.wrong[H.order[i].id]) return i; } return -1; }
 function broadcast(){
   if(!H) return;
@@ -391,6 +426,8 @@ function broadcast(){
     t:"state", round:H.round, locked:H.locked,
     current: ci>=0?H.order[ci].id:null,
     currentName: ci>=0?H.teams[H.order[ci].id].name:null,
+    currentBy: ci>=0?H.order[ci].by:null,
+    timeLeft: ci>=0 ? clockLeft() : null,
     order:H.order.map(function(o){ return o.id; }), wrong:Object.keys(H.wrong), scores:scores
   }, false);
 }
@@ -405,7 +442,7 @@ function buildValues(){
     box.appendChild(b);
   });
 }
-function nextClue(){ H.round=String(Date.now()); H.locked=false; H.order=[]; H.wrong={}; broadcast(); renderHost(); }
+function nextClue(){ stopClock(); H.round=String(Date.now()); H.locked=false; H.order=[]; H.wrong={}; broadcast(); renderHost(); }
 function toggleLock(){ H.locked=!H.locked; broadcast(); renderHost(); }
 function mark(right){
   var ci=currentIdx(); if(ci<0) return;
@@ -416,6 +453,7 @@ function mark(right){
   } else {
     if(minus) p.score -= H.value;
     H.wrong[id]=true; toast(p.name+(minus?" −"+H.value:" missed it")); tone([300,220],.15);
+    if(currentIdx()>=0) startClock(); else stopClock();
     saveHost(); broadcast(); renderHost();
   }
 }
@@ -450,7 +488,7 @@ function renderHost(){
   var pill=$("statePill");
   pill.className="pill "+(H.locked?"locked":"open"); pill.textContent=H.locked?"Buzzers locked":"Buzzers open";
   $("lockBtn").textContent = H.locked?"Unlock buzzers (L)":"Lock buzzers (L)";
-  if(cur){ $("stageWho").textContent=cur.name; $("stageSub").textContent = "is answering for "+H.value; }
+  if(cur){ $("stageWho").textContent=cur.name; $("stageSub").textContent = clockLeft()===0 ? "Time's up! Mark it right or wrong." : "is answering for "+H.value; }
   else if(H.order.length){ $("stageWho").textContent="Nobody left"; $("stageSub").textContent="Everyone who buzzed missed it. Reveal the answer, then press Next clue."; }
   else { $("stageWho").textContent="Waiting for a buzz…"; $("stageSub").textContent = H.locked?"Buzzers are locked.":"Read the clue, then let them buzz."; }
   $("rightBtn").disabled = !cur; $("wrongBtn").disabled = !cur;
@@ -543,6 +581,7 @@ function playerConnect(idx){
       if(packet && packet.retain) return;
       if(topic !== T + "/state" || !d || d.t!=="state" || typeof d.round!=="string") return;
       var was = P.st && P.st.current;
+      P.deadline = (typeof d.timeLeft==="number") ? Date.now() + d.timeLeft : null;
       P.st = d; P.lastState = Date.now(); P.tries = 0;
       if(d.current===teamKey(P.name) && was!==teamKey(P.name)){ try{ navigator.vibrate && navigator.vibrate([80,40,80]); }catch(e){} }
       renderPlayer();
@@ -580,6 +619,11 @@ document.addEventListener("keydown", function(e){
   if(e.code==="Space"){ e.preventDefault(); buzz(); }
 });
 
+setInterval(function(){
+  if($("playerView").hidden) return;
+  var s=P.st, show = s && s.current && P.deadline && !hostGone();
+  drawTimer("p", show ? P.deadline - Date.now() : null);
+}, 200);
 function hostGone(){ return P.lastState && Date.now()-P.lastState > 16000; }
 function renderPlayer(){
   var s=P.st, b=$("buzzBtn"), st=$("pStatus"), connected = P.conn && P.conn.client.connected;
@@ -591,7 +635,8 @@ function renderPlayer(){
   var team=teamKey(P.name);
   $("pScore").textContent = (s.scores && typeof s.scores[team]==="number") ? s.scores[team] : 0;
   var pos=s.order.indexOf(team), wrong=s.wrong.indexOf(team)>=0;
-  if(s.current===team){ b.disabled=true; b.classList.add("first"); b.textContent="UP!"; st.textContent="Your team is up! Say your answer"; st.classList.add("win"); }
+  if(s.current===team && s.currentBy===P.id){ b.disabled=true; b.classList.add("first"); b.textContent="YOU!"; st.textContent="YOU are up! You buzzed first. Answer now"; st.classList.add("win"); }
+  else if(s.current===team){ b.disabled=true; b.classList.add("first"); b.textContent="TEAM"; st.textContent="Your team is up! A teammate buzzed. Help them answer"; st.classList.add("win"); }
   else if(wrong){ b.disabled=true; b.textContent="✗"; st.textContent="Not quite. Wait for the next clue"; st.classList.add("bad"); }
   else if(pos>=0){ b.disabled=true; b.textContent="#"+(pos+1); st.textContent=(s.currentName?s.currentName+" is answering. ":"")+"Your team is next in line if they miss"; }
   else if(P.myRound===s.round){ b.disabled=true; b.textContent="…"; st.textContent="Buzzed!"; }
