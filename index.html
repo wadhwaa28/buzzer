@@ -236,9 +236,9 @@ var LS = {
 /* Public message servers (MQTT over secure WebSockets). Tried in order; the
    join link remembers which one the host is on. */
 var BROKERS = [
-  "wss://broker.hivemq.com:8884/mqtt",
-  "wss://test.mosquitto.org:8081/mqtt",
-  "wss://broker.emqx.io:8084/mqtt"
+  { url:"wss://public.cloud.shiftr.io", username:"public", password:"public" },  // standard web port 443: works on phone networks
+  { url:"wss://broker.hivemq.com:8884/mqtt" },
+  { url:"wss://test.mosquitto.org:8081/mqtt" }
 ];
 var TOPIC = "au-anniv-jeopardy-buzz/v2/";
 var ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -278,11 +278,13 @@ if(typeof mqtt === "undefined"){
    Connects to broker `idx`. Calls onUp(client) once connected. If it can't
    connect within 7 s, or drops and stays down 15 s, calls onFail(). */
 function connectBroker(idx, handlers){
-  var url = BROKERS[idx], up=false, failed=false, downTimer=null;
-  var client = mqtt.connect(url, {
+  var b = BROKERS[idx], up=false, failed=false, downTimer=null;
+  var opts = {
     clientId: "aub_" + Math.random().toString(36).slice(2,12),
     keepalive: 20, connectTimeout: 7000, reconnectPeriod: 2000, clean: true, protocolVersion: 4
-  });
+  };
+  if(b.username){ opts.username = b.username; opts.password = b.password; }
+  var client = mqtt.connect(b.url, opts);
   function fail(){ if(failed) return; failed=true; clearTimeout(downTimer); try{ client.end(true); }catch(e){} handlers.onFail(); }
   var firstTimer = setTimeout(function(){ if(!up) fail(); }, 8000);
   client.on("connect", function(){
@@ -572,7 +574,7 @@ function renderPlayer(){
   st.className="status"; b.classList.remove("first");
   if(connected && P.lastState && !hostGone()) setPConn(true, "Connected to game " + P.code);
   else if(connected && !P.lastState) setPConn(false, "Looking for game " + P.code + "…");
-  if(!s){ b.disabled=true; b.textContent="…"; st.textContent = P.tries>=BROKERS.length ? "Can't find game "+P.code+". Check the code and make sure the host's screen is open." : "Joining…"; return; }
+  if(!s){ b.disabled=true; b.textContent="…"; st.textContent = P.tries>=BROKERS.length ? "Can't reach game "+P.code+". Check the code and that the host's screen is open. If it still fails, switch this phone between Wi-Fi and cellular." : "Joining…"; return; }
   if(hostGone()){ b.disabled=true; b.textContent="…"; st.textContent="Waiting for the host's screen…"; setPConn(false,"Host not responding"); return; }
   $("pScore").textContent = (s.scores && typeof s.scores[P.id]==="number") ? s.scores[P.id] : 0;
   var pos=s.order.indexOf(P.id), wrong=s.wrong.indexOf(P.id)>=0;
