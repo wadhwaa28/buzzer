@@ -154,7 +154,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
         <div class="card">
           <div class="row spread"><h2>Scoreboard</h2><span class="muted" id="pCount"></span></div>
           <ul class="scores" id="scores"></ul>
-          <div class="empty" id="scoresEmpty">Players show up here as they join.</div>
+          <div class="empty" id="scoresEmpty">Teams show up here as phones join.</div>
         </div>
       </div>
 
@@ -196,12 +196,13 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
     <h1>Au Anniversary <span>Buzzer</span></h1>
     <div class="card" style="max-width:460px;margin:5vh auto 0;width:100%">
       <span class="label">Joining game <span class="acc" id="nameCode"></span></span>
-      <h2>What should we call you?</h2>
+      <h2>What's your team name?</h2>
       <form id="nameForm" style="display:flex;flex-direction:column;gap:10px" autocomplete="off">
-        <input type="text" id="nameInput" maxlength="20" placeholder="Your name or team">
+        <input type="text" id="nameInput" maxlength="20" placeholder="e.g. Team Nani">
         <button class="btn primary" type="submit" style="font-size:1.15rem">Let's play</button>
       </form>
-      <p class="muted" style="margin:0;font-size:.9rem">Keep this screen open. If your phone locks, just open it again and you'll rejoin with your score.</p>
+      <p class="muted" style="margin:0;font-size:.9rem">Type the exact same team name as your teammates to share one buzzer and one score. Capitals don't matter.</p>
+      <p class="muted" style="margin:0;font-size:.9rem">Keep this screen open. If your phone locks, just open it again and you'll rejoin.</p>
     </div>
   </section>
 
@@ -210,7 +211,7 @@ input[type=text]{font:inherit;font-size:1.2rem;padding:13px 14px;border-radius:1
     <div class="ptop">
       <div style="text-align:left">
         <div style="font-weight:600;font-size:1.1rem" id="pName"></div>
-        <button class="btn small" id="renameBtn" type="button" style="margin-top:4px">Change name</button>
+        <button class="btn small" id="renameBtn" type="button" style="margin-top:4px">Switch team</button>
       </div>
       <div style="text-align:right">
         <div class="label">Score</div>
@@ -245,6 +246,7 @@ var ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 function newCode(){ var s=""; for(var i=0;i<5;i++) s+=ALPHA[Math.floor(Math.random()*ALPHA.length)]; return s; }
 function cleanCode(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5); }
 function cleanName(s){ return String(s||"").replace(/\s+/g," ").trim().slice(0,20); }
+function teamKey(name){ return cleanName(name).toLowerCase(); }
 function show(id){ ["landing","hostView","nameView","playerView"].forEach(function(v){ $(v).hidden = v!==id; }); }
 var toastT;
 function toast(msg){ var t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(function(){ t.hidden=true; },2200); }
@@ -309,14 +311,14 @@ function startHost(){
   show("hostView");
   if(location.protocol === "file:") $("fileWarn").hidden = false;
   var saved = null; try{ saved = JSON.parse(LS.get("buzzHost")||"null"); }catch(e){}
-  H = saved && saved.code ? saved : { code:newCode(), players:{}, value:200 };
+  H = saved && saved.code && saved.teams ? saved : { code:newCode(), teams:{}, value:200 };
+  H.players = {}; // phone id -> {team, seen}
   H.round = String(Date.now()); H.locked=false; H.order=[]; H.wrong={}; H.b = 0; H.conn=null;
-  Object.keys(H.players).forEach(function(id){ H.players[id].seen=0; });
   buildValues(); hostConnect(0); renderHost();
 }
 function saveHost(){
-  var p={}; Object.keys(H.players).forEach(function(id){ p[id]={name:H.players[id].name,score:H.players[id].score}; });
-  LS.set("buzzHost", JSON.stringify({code:H.code, players:p, value:H.value}));
+  var t={}; Object.keys(H.teams).forEach(function(k){ t[k]={name:H.teams[k].name,score:H.teams[k].score}; });
+  LS.set("buzzHost", JSON.stringify({code:H.code, teams:t, value:H.value}));
 }
 function joinURL(){ return location.origin + location.pathname + "?room=" + H.code + (H.b ? "&b=" + H.b : ""); }
 function drawJoin(){
@@ -351,25 +353,31 @@ function publish(topic, obj, retain){
   if(c && c.connected){ try{ c.publish(topic, JSON.stringify(obj), {qos:0, retain:!!retain}); }catch(e){} }
 }
 function online(p){ return p && p.seen && (Date.now()-p.seen) < 16000; }
+/* Phones on a team that are connected right now. */
+function phonesOn(k){ return Object.keys(H.players).filter(function(id){ return H.players[id].team===k && online(H.players[id]); }).length; }
 function onHostData(d){
   if(!d || typeof d!=="object" || typeof d.id!=="string" || d.id.length>40) return;
   var id=d.id;
   if(d.t==="hello"){
-    var name = cleanName(d.name)||"Player";
-    var p = H.players[id] || (H.players[id]={score:0});
-    var isNew = !p.name, wasOff = !online(p);
-    p.name=name; p.seen=Date.now();
-    if(isNew){ toast(name+" joined"); saveHost(); }
-    if(isNew || wasOff || d.need) broadcast();
+    var name = cleanName(d.name)||"Player", k = teamKey(name);
+    var p = H.players[id] || (H.players[id]={});
+    var wasOff = !online(p), moved = p.team !== k;
+    p.team=k; p.seen=Date.now();
+    var isNewTeam = !H.teams[k];
+    if(isNewTeam){ H.teams[k]={name:name, score:0}; toast(name+" joined"); saveHost(); }
+    else if(moved){ toast("Someone joined "+H.teams[k].name); }
+    if(isNewTeam || moved || wasOff || d.need) broadcast();
     renderHost();
     return;
   }
   if(d.t==="buzz"){
-    var pl=H.players[id]; if(!pl) return;
+    var pl=H.players[id]; if(!pl || !pl.team) return;
     pl.seen=Date.now();
-    if(d.round!==H.round || H.locked || H.wrong[id]) return;
-    if(H.order.some(function(o){ return o.id===id; })) return;
-    H.order.push({id:id, at:performance.now()});
+    var team=pl.team;
+    // Shared team buzzer: only the team's first press counts.
+    if(d.round!==H.round || H.locked || H.wrong[team]) return;
+    if(H.order.some(function(o){ return o.id===team; })) return;
+    H.order.push({id:team, at:performance.now()});
     if(currentIdx()===H.order.length-1 && $("soundToggle").checked) playBuzz();
     broadcast(); renderHost();
   }
@@ -378,11 +386,11 @@ function currentIdx(){ for(var i=0;i<H.order.length;i++){ if(!H.wrong[H.order[i]
 function broadcast(){
   if(!H) return;
   var ci=currentIdx(), scores={};
-  Object.keys(H.players).forEach(function(k){ scores[k]=H.players[k].score; });
+  Object.keys(H.teams).forEach(function(k){ scores[k]=H.teams[k].score; });
   publish(TOPIC + H.code + "/state", {
     t:"state", round:H.round, locked:H.locked,
     current: ci>=0?H.order[ci].id:null,
-    currentName: ci>=0?H.players[H.order[ci].id].name:null,
+    currentName: ci>=0?H.teams[H.order[ci].id].name:null,
     order:H.order.map(function(o){ return o.id; }), wrong:Object.keys(H.wrong), scores:scores
   }, false);
 }
@@ -401,7 +409,7 @@ function nextClue(){ H.round=String(Date.now()); H.locked=false; H.order=[]; H.w
 function toggleLock(){ H.locked=!H.locked; broadcast(); renderHost(); }
 function mark(right){
   var ci=currentIdx(); if(ci<0) return;
-  var id=H.order[ci].id, p=H.players[id], minus=$("minusToggle").checked;
+  var id=H.order[ci].id, p=H.teams[id], minus=$("minusToggle").checked;
   if(right){
     p.score += H.value; toast(p.name+" +"+H.value); tone([660,880,1100],.09);
     saveHost(); nextClue();
@@ -423,7 +431,7 @@ $("newCodeBtn").addEventListener("click", function(){ H.code=newCode(); saveHost
 $("resetScores").addEventListener("click", function(){ $("confirmReset").hidden=false; $("resetScores").hidden=true; });
 $("confirmNo").addEventListener("click", function(){ $("confirmReset").hidden=true; $("resetScores").hidden=false; });
 $("confirmYes").addEventListener("click", function(){
-  Object.keys(H.players).forEach(function(k){ if(!online(H.players[k])) delete H.players[k]; else H.players[k].score=0; });
+  Object.keys(H.teams).forEach(function(k){ if(!phonesOn(k)) delete H.teams[k]; else H.teams[k].score=0; });
   $("confirmReset").hidden=true; $("resetScores").hidden=false; saveHost(); broadcast(); renderHost(); toast("Scores reset");
 });
 document.addEventListener("keydown", function(e){
@@ -438,7 +446,7 @@ document.addEventListener("keydown", function(e){
 });
 
 function renderHost(){
-  var ci=currentIdx(), cur = ci>=0 ? H.players[H.order[ci].id] : null;
+  var ci=currentIdx(), cur = ci>=0 ? H.teams[H.order[ci].id] : null;
   var pill=$("statePill");
   pill.className="pill "+(H.locked?"locked":"open"); pill.textContent=H.locked?"Buzzers locked":"Buzzers open";
   $("lockBtn").textContent = H.locked?"Unlock buzzers (L)":"Lock buzzers (L)";
@@ -450,7 +458,7 @@ function renderHost(){
   var q=$("queue"); q.textContent="";
   var t0 = H.order.length?H.order[0].at:0;
   H.order.forEach(function(o,i){
-    var p=H.players[o.id]; if(!p) return;
+    var p=H.teams[o.id]; if(!p) return;
     var li=document.createElement("li"); if(H.wrong[o.id]) li.className="out"; else if(i===ci) li.className="now";
     var n=document.createElement("span"); n.className="n"; n.textContent=i+1;
     var nm=document.createElement("span"); nm.textContent=p.name; nm.style.fontWeight="600";
@@ -459,13 +467,16 @@ function renderHost(){
   });
   $("queueEmpty").hidden = H.order.length>0;
 
-  var ids=Object.keys(H.players).sort(function(a,b){ return H.players[b].score-H.players[a].score; });
+  var ids=Object.keys(H.teams).sort(function(a,b){ return H.teams[b].score-H.teams[a].score; });
   var ul=$("scores"); ul.textContent="";
   ids.forEach(function(id){
-    var p=H.players[id], li=document.createElement("li"), on=online(p);
+    var p=H.teams[id], li=document.createElement("li"), n=phonesOn(id), on=n>0;
     var nm=document.createElement("span"); nm.className="nm";
     var d=document.createElement("span"); d.className="dot"+(on?"":" off"); d.title=on?"Connected":"Not connected";
-    var tx=document.createElement("span"); tx.textContent=p.name; nm.append(d,tx);
+    var tx=document.createElement("span"); tx.textContent=p.name;
+    var ph=document.createElement("span"); ph.className="muted"; ph.style.fontWeight="400"; ph.style.fontSize=".85rem";
+    ph.textContent = n + (n===1?" phone":" phones");
+    nm.append(d,tx,ph);
     var pts=document.createElement("span"); pts.className="pts"; pts.textContent=p.score;
     var adj=document.createElement("span"); adj.className="adj";
     [["−",-100],["+",100]].forEach(function(a){
@@ -477,8 +488,8 @@ function renderHost(){
     li.append(nm,pts,adj); ul.appendChild(li);
   });
   $("scoresEmpty").hidden = ids.length>0;
-  var n=ids.filter(function(id){ return online(H.players[id]); }).length;
-  $("pCount").textContent = ids.length ? n+" connected" : "";
+  var n=ids.filter(function(id){ return phonesOn(id)>0; }).length;
+  $("pCount").textContent = ids.length ? n+(n===1?" team":" teams")+" connected" : "";
 }
 
 /* =========================== PLAYER =========================== */
@@ -489,12 +500,12 @@ function startPlayer(code){
   P.code=code; $("nameCode").textContent=code;
   P.b = (brokerParam>=0 && brokerParam<BROKERS.length) ? brokerParam : 0;
   if(!P.name){ show("nameView"); $("nameInput").focus(); return; }
-  show("playerView"); $("pName").textContent=P.name; renderPlayer(); playerConnect(P.b);
+  show("playerView"); $("pName").textContent="Team: "+P.name; renderPlayer(); playerConnect(P.b);
 }
 $("nameForm").addEventListener("submit", function(e){
   e.preventDefault(); unlockAudio();
   var n=cleanName($("nameInput").value); if(!n){ $("nameInput").focus(); return; }
-  P.name=n; LS.set("buzzName",n); show("playerView"); $("pName").textContent=n;
+  P.name=n; LS.set("buzzName",n); show("playerView"); $("pName").textContent="Team: "+n;
   if(P.conn && P.conn.client.connected) sendHello(true); else playerConnect(P.b);
   renderPlayer();
 });
@@ -533,7 +544,7 @@ function playerConnect(idx){
       if(topic !== T + "/state" || !d || d.t!=="state" || typeof d.round!=="string") return;
       var was = P.st && P.st.current;
       P.st = d; P.lastState = Date.now(); P.tries = 0;
-      if(d.current===P.id && was!==P.id){ try{ navigator.vibrate && navigator.vibrate([80,40,80]); }catch(e){} }
+      if(d.current===teamKey(P.name) && was!==teamKey(P.name)){ try{ navigator.vibrate && navigator.vibrate([80,40,80]); }catch(e){} }
       renderPlayer();
     }
   });
@@ -553,7 +564,8 @@ document.addEventListener("visibilitychange", function(){
 });
 
 function buzz(){
-  var s=P.st; if(!s || hostGone() || s.locked || P.myRound===s.round || s.wrong.indexOf(P.id)>=0) return;
+  var s=P.st, team=teamKey(P.name);
+  if(!s || hostGone() || s.locked || P.myRound===s.round || s.wrong.indexOf(team)>=0 || s.order.indexOf(team)>=0) return;
   if(!pPublish({t:"buzz", id:P.id, round:s.round})) return;
   P.myRound=s.round;
   if($("pSound").checked) playBuzz();
@@ -576,11 +588,12 @@ function renderPlayer(){
   else if(connected && !P.lastState) setPConn(false, "Looking for game " + P.code + "…");
   if(!s){ b.disabled=true; b.textContent="…"; st.textContent = P.tries>=BROKERS.length ? "Can't reach game "+P.code+". Check the code and that the host's screen is open. If it still fails, switch this phone between Wi-Fi and cellular." : "Joining…"; return; }
   if(hostGone()){ b.disabled=true; b.textContent="…"; st.textContent="Waiting for the host's screen…"; setPConn(false,"Host not responding"); return; }
-  $("pScore").textContent = (s.scores && typeof s.scores[P.id]==="number") ? s.scores[P.id] : 0;
-  var pos=s.order.indexOf(P.id), wrong=s.wrong.indexOf(P.id)>=0;
-    if(s.current===P.id){ b.disabled=true; b.classList.add("first"); b.textContent="YOU!"; st.textContent="You're up! Say your answer"; st.classList.add("win"); }
+  var team=teamKey(P.name);
+  $("pScore").textContent = (s.scores && typeof s.scores[team]==="number") ? s.scores[team] : 0;
+  var pos=s.order.indexOf(team), wrong=s.wrong.indexOf(team)>=0;
+  if(s.current===team){ b.disabled=true; b.classList.add("first"); b.textContent="UP!"; st.textContent="Your team is up! Say your answer"; st.classList.add("win"); }
   else if(wrong){ b.disabled=true; b.textContent="✗"; st.textContent="Not quite. Wait for the next clue"; st.classList.add("bad"); }
-  else if(pos>=0){ b.disabled=true; b.textContent="#"+(pos+1); st.textContent=(s.currentName?s.currentName+" is answering. ":"")+"You're next in line if they miss"; }
+  else if(pos>=0){ b.disabled=true; b.textContent="#"+(pos+1); st.textContent=(s.currentName?s.currentName+" is answering. ":"")+"Your team is next in line if they miss"; }
   else if(P.myRound===s.round){ b.disabled=true; b.textContent="…"; st.textContent="Buzzed!"; }
   else if(s.locked){ b.disabled=true; b.textContent="WAIT"; st.textContent="Buzzers are locked"; }
   else if(s.current){ b.disabled=false; b.textContent="BUZZ"; st.textContent=s.currentName+" is answering. Buzz to get in line"; }
